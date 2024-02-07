@@ -14,6 +14,35 @@ object GameLogic {
     )
 
     fun generateRandomFruitCombination(): List<Fruit> {
-        return allFruits.shuffled().take(4)
+        return allFruits.shuffled().distinctBy { it.imageResId }.take(4)
     }
+
+    fun checkGuess(guess: List<Fruit>, secretCombination: List<Fruit>): GuessResult {
+        val correctPositions = guess.zip(secretCombination).count { it.first == it.second }
+        val misplacedPositions = guess.filter { it in secretCombination }.size - correctPositions
+        return GuessResult(guess, correctPositions, misplacedPositions)
+    }
+
+    fun provideSeedHint(secretCombination: List<Fruit>): List<String> {
+        return secretCombination.map { if (it.hasSeeds) "With" else "Without" }
+    }
+
+    fun providePeelableHint(secretCombination: List<Fruit>): List<String> {
+        return secretCombination.map { if (it.isPeelable) "Peelable" else "NotPeelable" }
+    }
+
 }
+
+data class GuessResult(
+    val guess: List<Fruit>,
+    val correctPositions: Int,
+    val misplacedPositions: Int
+)
+
+data class GameState(
+    val secretCombination: List<Fruit> = listOf(),
+    var attemptsLeft: Int = 10,
+    val history: MutableList<GuessResult> = mutableListOf(),
+    var score: Int = 0,
+    val gamesWon: Int = 0
+)
