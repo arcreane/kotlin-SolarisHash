@@ -6,27 +6,23 @@ import androidx.compose.runtime.mutableStateOf
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,7 +36,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmallTopAppBarExample(fruits: List<Fruit>) {
-    var showMenu by remember { mutableStateOf(false) } // État pour afficher/cacher le menu
+    var showMenu by remember { mutableStateOf(false) } // Pour le menu dans TopAppBar
+    var showDialog by remember { mutableStateOf(false) } // Pour contrôler l'affichage du dialogue des fruits
 
     Scaffold(
         topBar = {
@@ -61,25 +58,25 @@ fun SmallTopAppBarExample(fruits: List<Fruit>) {
                     ) {
                         DropdownMenuItem(
                             text = { Text("Option 1") },
-                            onClick = {
-                                // Gérer l'action de l'option 1
-                                showMenu = false
-                            }
+                            onClick = { showMenu = false }
                         )
                         DropdownMenuItem(
                             text = { Text("Option 2") },
-                            onClick = {
-                                // Gérer l'action de l'option 2
-                                showMenu = false
-                            }
+                            onClick = { showMenu = false }
                         )
                         // Ajouter plus d'options ici si nécessaire
                     }
                 }
             )
+        },
+        bottomBar = {
+            BottomFruitCells { showDialog = true }
         }
     ) { innerPadding ->
         FruitCombinationDisplay(fruits, Modifier.padding(innerPadding))
+        if (showDialog) { // Ajoutez cette vérification pour afficher le dialogue seulement si showDialog est vrai
+            FruitSelectionDialog(GameLogic.allFruits.map { it.name }, onDismiss = { showDialog = false })
+        }
     }
 }
 
@@ -97,4 +94,52 @@ fun FruitCombinationDisplay(fruits: List<Fruit>, modifier: Modifier = Modifier) 
 fun DefaultPreview() {
     val sampleFruits = GameLogic.generateRandomFruitCombination() // Utilisez ceci pour le preview
     SmallTopAppBarExample(sampleFruits)
+}
+
+@Composable
+fun BottomFruitCells(onCellClicked: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 1..4) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .padding(4.dp)
+                    .clickable(onClick = onCellClicked)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+                content = {}
+            )
+        }
+    }
+}
+
+@Composable
+fun Row(modifier: Any, horizontalArrangement: Any, verticalAlignment: Alignment.Vertical, content: () -> Unit) {
+
+}
+
+@Composable
+fun FruitSelectionDialog(fruits: List<String>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Fruits") },
+        text = {
+            Column {
+                fruits.forEach { fruit ->
+                    Text(fruit, Modifier.padding(2.dp))
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onDismiss() }) {
+                Text("Close")
+            }
+        }
+    )
 }
