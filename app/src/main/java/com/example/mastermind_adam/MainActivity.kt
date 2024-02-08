@@ -34,9 +34,10 @@ import androidx.compose.ui.tooling.preview.Preview
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val secretCombination = GameLogic.generateRandomFruitCombination()
         setContent {
             // Using MaterialTheme directly
+            val secretCombination by remember { mutableStateOf(GameLogic.generateRandomFruitCombination()) }
+
             MaterialTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colorScheme.background) {
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
-    //val secretCombination = GameLogic.generateRandomFruitCombination()
+    val secretCombination = remember { mutableStateOf(GameLogic.generateRandomFruitCombination()) }
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var selectedFruits by remember { mutableStateOf<List<Fruit?>>(List(fruits.size) { null }) }
@@ -111,20 +112,23 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                         val lastResult = gameState.history.lastOrNull()
                         lastResult?.let {
                             history += listOf(selectedFruits to it) // Ajoutez ici la logique d'affichage adaptée à votre structure
+
                         }
                         // Réinitialiser la sélection actuelle ou effectuer d'autres actions nécessaires
                         selectedFruits = List(fruits.size) { null }
                         showValidation = false
                         selectedCellIndex = null
 
-                        if (gameState.attemptsLeft <= 0) {
+                        if (gameState.attemptsLeft <= 0 && lastResult?.correctPositions != gameState.secretCombination.size) {
                             gameStateStatus = GameStateStatus.LOST
-                            dialogMessage = "Vous avez perdu ! Voulez-vous recommencer ou quitter ?"
-                        } else if (gameState.score > 0) { // Suppose que le score est ajusté uniquement en cas de victoire
+                            dialogMessage = "Dommage, vous avez perdu ! Voulez-vous recommencer ou quitter ?"
+                            alertDialog = true
+                        } else if (lastResult?.correctPositions == gameState.secretCombination.size) {
                             gameStateStatus = GameStateStatus.WON
                             dialogMessage = "Félicitations, vous avez gagné !"
+                            alertDialog = true
                         }
-                        alertDialog = true
+                        //alertDialog = true
                     },
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                 ) {
@@ -157,6 +161,7 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
 
 
         }
+
         if (alertDialog) {
             AlertDialog(
                 onDismissRequest = { alertDialog = false },
@@ -166,41 +171,39 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                     Button(onClick = {
                         when (gameStateStatus) {
                             GameStateStatus.WON -> {
-                                // Pour un nouveau set tout en conservant le score
-                                gameState.secretCombination = GameLogic.generateRandomFruitCombination()
-                                gameState.attemptsLeft = 10 // Supposons que 10 soit votre nombre d'essais par défaut
-                                // Le score est déjà mis à jour, pas besoin de le réinitialiser ici
-                            }
-                            GameStateStatus.LOST -> {
-                                // Pour recommencer une nouvelle partie
+                                // Nouveau set tout en conservant le score
                                 gameState.secretCombination = GameLogic.generateRandomFruitCombination()
                                 gameState.attemptsLeft = 10
-                                gameState.score = 0 // Réinitialisation du score pour une nouvelle partie
+                                gameState.history.clear() // Effacer l'historique pour le nouveau set
+                                // Le score est conservé
                             }
-
-                            else -> {}
+                            GameStateStatus.LOST -> {
+                                // Recommencer une nouvelle partie
+                                gameState.secretCombination = GameLogic.generateRandomFruitCombination()
+                                gameState.attemptsLeft = 10
+                                gameState.score = 0 // Réinitialisation du score
+                                gameState.history.clear() // Effacer l'historique pour la nouvelle partie
+                            }
+                            else -> {} // Pas d'action pour PLAYING
                         }
-                        // Réinitialisez la sélection actuelle et l'état de l'alert dialog
-                        selectedFruits = List(gameState.secretCombination.size) { null }
+
                         alertDialog = false
-                        // Réinitialisez l'état du jeu et l'historique si nécessaire
-                        gameState.history.clear()
+                        gameStateStatus = GameStateStatus.PLAYING // Réinitialiser l'état de jeu
                     }) {
                         Text(if (gameStateStatus == GameStateStatus.LOST) "Recommencer" else "Nouveau Set")
                     }
                 },
                 dismissButton = {
                     Button(onClick = {
-                        // Option pour quitter le jeu ou fermer la dialog
                         alertDialog = false
-                        // Si vous avez une logique spécifique pour quitter le jeu, ajoutez-la ici
+                        // Ajouter la logique pour quitter l'application si nécessaire
                     }) {
                         Text("Quitter")
                     }
                 }
-
             )
         }
+
 
     }
 }
@@ -242,7 +245,6 @@ fun DisplayHistory(history: List<Pair<List<Fruit?>, ComparisonResult>>) {
         }
     }
 }
-
 
 //Affiche les combinaisons de fruit
 @Composable

@@ -82,9 +82,6 @@ object GameLogic {
 
     }
 
-
-
-
     fun provideSeedHint(secretCombination: List<Fruit>): List<String> {
         return secretCombination.map { if (it.hasSeeds) "With" else "Without" }
     }
