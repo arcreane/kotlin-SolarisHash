@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -51,6 +53,9 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
     var showDialog by remember { mutableStateOf(false) }
     var selectedFruits by remember { mutableStateOf<List<Fruit?>>(List(fruits.size) { null }) }
     var selectedCellIndex by remember { mutableStateOf<Int?>(null) }
+    var showValidation by remember { mutableStateOf(false) }
+    var history by mutableStateOf<List<List<Fruit?>>>(listOf())
+
 
     Scaffold(
         topBar = {
@@ -81,20 +86,34 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
             )
         },
         bottomBar = {
-            BottomFruitCells(
-                selectedFruits = selectedFruits, // This is the corrected part
-                onCellClicked = { index ->
-                    // Handle cell click, potentially to show a dialog for fruit selection
-                    selectedCellIndex = index
-                    showDialog = true
-                },
-                fruits = GameLogic.allFruits // Make sure GameLogic.allFruits provides the correct data
-            )
+            Column {
+                BottomFruitCells(
+                    selectedFruits = selectedFruits,
+                    onCellClicked = { index ->
+                        selectedCellIndex = index
+                        showDialog = true
+                    },
+                    fruits = GameLogic.allFruits
+                )
+                Button(
+                    onClick = {
+                        // Ajoutez la sélection actuelle à l'historique
+                        history = history + listOf(selectedFruits)
+                        // Réinitialisez la sélection actuelle ou effectuez toute autre action nécessaire
+                        showValidation = false // Cachez le bouton ou réinitialisez l'état si nécessaire
+                    },
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                ) {
+                    Text("Validate Selection")
+                }
+
+            }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             // Display the game info just below the top bar
             GameInfoDisplay(gameState = gameState)
+            DisplayHistory(history)
 
             // Now display the fruit combination or any other main content
             FruitCombinationDisplay(fruits)
@@ -117,7 +136,7 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
     }
 }
 
-
+//Display score et attempts
 @Composable
 fun GameInfoDisplay(gameState: GameState) {
     Column(
@@ -136,16 +155,46 @@ fun GameInfoDisplay(gameState: GameState) {
     }
 }
 
-
-
 @Composable
-fun FruitCombinationDisplay(fruits: List<Fruit>, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(16.dp)) {
-        for (fruit in fruits) {
-            Text(text = fruit.name)
+fun DisplayHistory(history: List<List<Fruit?>>) {
+    history.forEachIndexed { index, selection ->
+        Text("Selection $index", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(8.dp))
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            selection.forEach { fruit ->
+                fruit?.let {
+                    Image(
+                        painter = painterResource(id = it.imageResId),
+                        contentDescription = it.name,
+                        modifier = Modifier.size(100.dp).padding(8.dp)
+                    )
+                }
+            }
         }
     }
 }
+
+
+//Affiche les combinaisons de fruit
+@Composable
+fun FruitCombinationDisplay(selectedFruits: List<Fruit?>, modifier: Modifier = Modifier) {
+    Row(modifier = modifier
+        .horizontalScroll(rememberScrollState())
+        .padding(16.dp)) {
+        for (fruit in selectedFruits) {
+            fruit?.let {
+                Image(
+                    painter = painterResource(id = it.imageResId),
+                    contentDescription = it.name,
+                    modifier = Modifier
+                        .size(100.dp)
+                        .padding(8.dp)
+                )
+            }
+        }
+    }
+}
+
+
 
 @Preview(showBackground = true)
 @Composable
@@ -154,12 +203,15 @@ fun DefaultPreview() {
     SmallTopAppBarExample(sampleFruits, gameState)
 }
 
+
+
+//Gére les cellules du bas
 @Composable
 fun BottomFruitCells(
     selectedFruits: List<Fruit?>,
     onCellClicked: (Int) -> Unit,
     fruits: List<Fruit>
-) {
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -188,6 +240,7 @@ fun BottomFruitCells(
 
 
 
+//Modal de selection de fruit
 @Composable
 fun FruitSelectionDialog(fruits: List<Fruit>, onFruitSelected: (Fruit) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -212,6 +265,9 @@ fun FruitSelectionDialog(fruits: List<Fruit>, onFruitSelected: (Fruit) -> Unit, 
     )
 }
 
+
+
+//Fruit selectionner passe en background
 @Composable
 fun SelectedFruitBackground(fruit: Fruit?) {
     Box(
@@ -222,7 +278,10 @@ fun SelectedFruitBackground(fruit: Fruit?) {
         contentAlignment = Alignment.Center
     ) {
         fruit?.let {
-            Image(painter = painterResource(id = it.imageResId), contentDescription = it.name)
+            Image(
+                painter = painterResource(id = it.imageResId),
+                contentDescription = it.name
+            )
         }
     }
 }
