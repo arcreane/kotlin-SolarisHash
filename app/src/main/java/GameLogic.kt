@@ -23,6 +23,60 @@ object GameLogic {
         return GuessResult(guess, correctPositions, misplacedPositions)
     }
 
+    fun compareSelections(secret: List<Fruit>, guess: List<Fruit?>): ComparisonResult {
+        // Initialiser le compte des positions correctes
+        var correctPositions = 0
+
+        // Initialiser la liste pour les fruits mal placés ou incorrects
+        val misplaced = MutableList(guess.size) { "X" } // Pré-remplir avec "X"
+
+        // Compter les fruits correctement positionnés et identifier les fruits présents (indépendamment de la position)
+        val secretCount = secret.groupBy { it }.mapValues { it.value.size }.toMutableMap()
+        guess.forEachIndexed { index, fruit ->
+            if (fruit != null) {
+                if (fruit == secret[index]) {
+                    // Fruit correctement positionné
+                    correctPositions++
+                    misplaced[index] = "" // Remplacer "X" par "" pour indiquer une position correcte
+                    secretCount[fruit] = secretCount[fruit]!! - 1
+                }
+            }
+        }
+
+        // Identifier les fruits mal placés
+        guess.forEachIndexed { index, fruit ->
+            if (fruit != null && misplaced[index] == "X" && secretCount.contains(fruit) && secretCount[fruit]!! > 0) {
+                misplaced[index] = "1" // Indique un fruit correct mais mal placé
+                secretCount[fruit] = secretCount[fruit]!! - 1
+            }
+        }
+
+        return ComparisonResult(correctPositions, misplaced)
+    }
+
+    fun validateSelection(gameState: GameState, playerSelection: List<Fruit?>) {
+        // Comparez la sélection du joueur avec la combinaison secrète
+        val comparisonResult = compareSelections(gameState.secretCombination, playerSelection.filterNotNull())
+
+        // Ajoutez le résultat de la comparaison à l'historique
+        gameState.history.add(comparisonResult)
+
+        // Diminuez le nombre d'essais restants
+        gameState.attemptsLeft--
+
+        // Vérifiez si la sélection du joueur correspond totalement à la combinaison secrète
+        if (comparisonResult.correctPositions == gameState.secretCombination.size) {
+            // Mise à jour du score avec le nombre d'essais restants
+            gameState.score = gameState.attemptsLeft
+
+            // Vous pouvez également choisir de réinitialiser le jeu ou de faire d'autres mises à jour ici
+        }
+
+        // Si vous souhaitez continuer à jouer ou afficher un message, c'est ici que vous le feriez
+    }
+
+
+
     fun provideSeedHint(secretCombination: List<Fruit>): List<String> {
         return secretCombination.map { if (it.hasSeeds) "With" else "Without" }
     }
@@ -31,7 +85,16 @@ object GameLogic {
         return secretCombination.map { if (it.isPeelable) "Peelable" else "NotPeelable" }
     }
 
+
+
 }
+
+
+data class ComparisonResult(
+    val correctPositions: Int,
+    val misplaced: List<String> // "X" pour incorrect, ou le nombre de positions mal placées pour les fruits corrects
+)
+
 
 data class GuessResult(
     val guess: List<Fruit>,
@@ -40,9 +103,9 @@ data class GuessResult(
 )
 
 data class GameState(
-    val secretCombination: List<Fruit> = listOf(),
-    var attemptsLeft: Int = 10,
-    val history: MutableList<GuessResult> = mutableListOf(),
+    var secretCombination: List<Fruit> = listOf(),
+    var attemptsLeft: Int = 10, // Exemple: 10 essais au début
     var score: Int = 0,
-    val gamesWon: Int = 0
+    var history: MutableList<ComparisonResult> = mutableListOf() // Supposons que vous avez ajouté ComparisonResult à votre historique
 )
+

@@ -1,5 +1,6 @@
 package com.example.mastermind_adam
 
+import ComparisonResult
 import GameState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -49,12 +50,14 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
+    //val secretCombination = GameLogic.generateRandomFruitCombination()
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var selectedFruits by remember { mutableStateOf<List<Fruit?>>(List(fruits.size) { null }) }
     var selectedCellIndex by remember { mutableStateOf<Int?>(null) }
     var showValidation by remember { mutableStateOf(false) }
-    var history by mutableStateOf<List<List<Fruit?>>>(listOf())
+    var history by mutableStateOf<List<Pair<List<Fruit?>, ComparisonResult>>>(listOf())
+
 
 
     Scaffold(
@@ -97,10 +100,13 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                 )
                 Button(
                     onClick = {
-                        // Ajoutez la sélection actuelle à l'historique
-                        history = history + listOf(selectedFruits)
-                        // Réinitialisez la sélection actuelle ou effectuez toute autre action nécessaire
-                        showValidation = false // Cachez le bouton ou réinitialisez l'état si nécessaire
+                        // Exemple de comparaison (ajustez selon votre implémentation)
+                        val result = GameLogic.compareSelections(fruits, selectedFruits.filterNotNull())
+                        // Mettre à jour l'historique avec la sélection et le résultat
+                        history += listOf(selectedFruits to result)
+                        // Réinitialiser la sélection actuelle ou effectuer d'autres actions nécessaires
+                        selectedFruits = List(fruits.size) { null }
+                        showValidation = false
                     },
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                 ) {
@@ -156,16 +162,17 @@ fun GameInfoDisplay(gameState: GameState) {
 }
 
 @Composable
-fun DisplayHistory(history: List<List<Fruit?>>) {
-    history.forEachIndexed { index, selection ->
-        Text("Selection $index", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(8.dp))
-        Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+fun DisplayHistory(history: List<Pair<List<Fruit?>, ComparisonResult>>) {
+    history.forEachIndexed { index, (selection, result) ->
+        // Affichez ici la sélection et le résultat de la comparaison
+        Text("Attempt $index: Correct positions ${result.correctPositions}, Misplaced ${result.misplaced}")
+        Row {
             selection.forEach { fruit ->
                 fruit?.let {
                     Image(
                         painter = painterResource(id = it.imageResId),
                         contentDescription = it.name,
-                        modifier = Modifier.size(100.dp).padding(8.dp)
+                        modifier = Modifier.size(50.dp)
                     )
                 }
             }
@@ -215,26 +222,37 @@ fun BottomFruitCells(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp), // Ajustez ce padding pour l'espace autour des cellules
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
         fruits.indices.forEach { index ->
             Box(
                 modifier = Modifier
-                    .size(100.dp)
-                    .background(color = Color.Gray)
-                    .padding(4.dp)
-                    .clickable { onCellClicked(index) },
-                contentAlignment = Alignment.Center
+                    .padding(4.dp) // Espace entre la bordure grise et la cellule blanche
+                    .background(Color.Gray) // Fond gris pour la bordure
+                    .clickable { onCellClicked(index) }
             ) {
-                // Display the selected fruit's image if any
-                selectedFruits.getOrNull(index)?.let { fruit ->
-                    Image(painter = painterResource(id = fruit.imageResId), contentDescription = fruit.name)
+                Box(
+                    modifier = Modifier
+                        .size(85.dp) // Taille de la cellule blanche
+                        .background(Color.LightGray) // Fond blanc pour la cellule
+                        .padding(4.dp), // Padding interne si nécessaire
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Contenu de la cellule, par exemple une image
+                    selectedFruits.getOrNull(index)?.let { fruit ->
+                        Image(
+                            painter = painterResource(id = fruit.imageResId),
+                            contentDescription = fruit.name,
+                            modifier = Modifier.size(80.dp) // Ajustez la taille de l'image si nécessaire
+                        )
+                    }
                 }
             }
         }
     }
+
 }
 
 
@@ -293,19 +311,6 @@ fun SelectedFruitBackground(fruit: Fruit?) {
 
 var gameState by mutableStateOf(GameState())
 
-fun submitGuess(guess: List<Fruit>) {
-    if (gameState.attemptsLeft > 0) {
-        val result = GameLogic.checkGuess(guess, gameState.secretCombination)
-        gameState.history.add(result)
-        gameState.attemptsLeft--
-
-        if (result.correctPositions == gameState.secretCombination.size) {
-            // L'utilisateur a trouvé la combinaison correcte
-            gameState.score += gameState.attemptsLeft
-            // Recommencer le jeu ou mettre à jour les statistiques
-        }
-    }
-}
 
 enum class HintType {
     SEED,
