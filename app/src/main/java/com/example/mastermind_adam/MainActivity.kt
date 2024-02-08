@@ -58,6 +58,11 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
     var showValidation by remember { mutableStateOf(false) }
     var history by mutableStateOf<List<Pair<List<Fruit?>, ComparisonResult>>>(listOf())
 
+    var alertDialog by remember { mutableStateOf(false) }
+    var dialogMessage by remember { mutableStateOf("") }
+    var gameStateStatus by remember { mutableStateOf(GameStateStatus.PLAYING) }
+
+
 
 
     Scaffold(
@@ -101,12 +106,25 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                 Button(
                     onClick = {
                         // Exemple de comparaison (ajustez selon votre implémentation)
-                        val result = GameLogic.compareSelections(fruits, selectedFruits.filterNotNull())
-                        // Mettre à jour l'historique avec la sélection et le résultat
-                        history += listOf(selectedFruits to result)
+                        GameLogic.validateSelection(gameState, selectedFruits)
+
+                        val lastResult = gameState.history.lastOrNull()
+                        lastResult?.let {
+                            history += listOf(selectedFruits to it) // Ajoutez ici la logique d'affichage adaptée à votre structure
+                        }
                         // Réinitialiser la sélection actuelle ou effectuer d'autres actions nécessaires
                         selectedFruits = List(fruits.size) { null }
                         showValidation = false
+                        selectedCellIndex = null
+
+                        if (gameState.attemptsLeft <= 0) {
+                            gameStateStatus = GameStateStatus.LOST
+                            dialogMessage = "Vous avez perdu ! Voulez-vous recommencer ou quitter ?"
+                        } else if (gameState.score > 0) { // Suppose que le score est ajusté uniquement en cas de victoire
+                            gameStateStatus = GameStateStatus.WON
+                            dialogMessage = "Félicitations, vous avez gagné !"
+                        }
+                        alertDialog = true
                     },
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
                 ) {
@@ -139,6 +157,51 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
 
 
         }
+        if (alertDialog) {
+            AlertDialog(
+                onDismissRequest = { alertDialog = false },
+                title = { Text("Résultat du jeu") },
+                text = { Text(dialogMessage) },
+                confirmButton = {
+                    Button(onClick = {
+                        when (gameStateStatus) {
+                            GameStateStatus.WON -> {
+                                // Pour un nouveau set tout en conservant le score
+                                gameState.secretCombination = GameLogic.generateRandomFruitCombination()
+                                gameState.attemptsLeft = 10 // Supposons que 10 soit votre nombre d'essais par défaut
+                                // Le score est déjà mis à jour, pas besoin de le réinitialiser ici
+                            }
+                            GameStateStatus.LOST -> {
+                                // Pour recommencer une nouvelle partie
+                                gameState.secretCombination = GameLogic.generateRandomFruitCombination()
+                                gameState.attemptsLeft = 10
+                                gameState.score = 0 // Réinitialisation du score pour une nouvelle partie
+                            }
+
+                            else -> {}
+                        }
+                        // Réinitialisez la sélection actuelle et l'état de l'alert dialog
+                        selectedFruits = List(gameState.secretCombination.size) { null }
+                        alertDialog = false
+                        // Réinitialisez l'état du jeu et l'historique si nécessaire
+                        gameState.history.clear()
+                    }) {
+                        Text(if (gameStateStatus == GameStateStatus.LOST) "Recommencer" else "Nouveau Set")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = {
+                        // Option pour quitter le jeu ou fermer la dialog
+                        alertDialog = false
+                        // Si vous avez une logique spécifique pour quitter le jeu, ajoutez-la ici
+                    }) {
+                        Text("Quitter")
+                    }
+                }
+
+            )
+        }
+
     }
 }
 

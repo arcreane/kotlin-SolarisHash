@@ -13,6 +13,9 @@ object GameLogic {
         Fruit("Lemon", hasSeeds = true, isPeelable = true, R.drawable.lemon)
     )
 
+
+
+
     fun generateRandomFruitCombination(): List<Fruit> {
         return allFruits.shuffled().distinctBy { it.imageResId }.take(4)
     }
@@ -55,8 +58,14 @@ object GameLogic {
     }
 
     fun validateSelection(gameState: GameState, playerSelection: List<Fruit?>) {
+        // Assurez-vous que playerSelection ne contient pas de nulls pour la comparaison
+        val filteredSelection = playerSelection.filterNotNull()
+
+        // Vérifiez si la sélection du joueur est entièrement correcte
+        val isPerfectMatch = filteredSelection == gameState.secretCombination
+
         // Comparez la sélection du joueur avec la combinaison secrète
-        val comparisonResult = compareSelections(gameState.secretCombination, playerSelection.filterNotNull())
+        val comparisonResult = compareSelections(gameState.secretCombination, filteredSelection)
 
         // Ajoutez le résultat de la comparaison à l'historique
         gameState.history.add(comparisonResult)
@@ -64,16 +73,15 @@ object GameLogic {
         // Diminuez le nombre d'essais restants
         gameState.attemptsLeft--
 
-        // Vérifiez si la sélection du joueur correspond totalement à la combinaison secrète
-        if (comparisonResult.correctPositions == gameState.secretCombination.size) {
+        // Si la sélection du joueur correspond totalement à la combinaison secrète
+        if (isPerfectMatch) {
             // Mise à jour du score avec le nombre d'essais restants
             gameState.score = gameState.attemptsLeft
-
-            // Vous pouvez également choisir de réinitialiser le jeu ou de faire d'autres mises à jour ici
+            // Optionnellement, réinitialiser le jeu ou faire d'autres mises à jour ici
         }
 
-        // Si vous souhaitez continuer à jouer ou afficher un message, c'est ici que vous le feriez
     }
+
 
 
 
@@ -108,4 +116,8 @@ data class GameState(
     var score: Int = 0,
     var history: MutableList<ComparisonResult> = mutableListOf() // Supposons que vous avez ajouté ComparisonResult à votre historique
 )
+
+enum class GameStateStatus {
+    WON, LOST, PLAYING
+}
 
