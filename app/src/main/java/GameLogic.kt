@@ -20,11 +20,6 @@ object GameLogic {
         return allFruits.shuffled().distinctBy { it.imageResId }.take(4)
     }
 
-    fun checkGuess(guess: List<Fruit>, secretCombination: List<Fruit>): GuessResult {
-        val correctPositions = guess.zip(secretCombination).count { it.first == it.second }
-        val misplacedPositions = guess.filter { it in secretCombination }.size - correctPositions
-        return GuessResult(guess, correctPositions, misplacedPositions)
-    }
 
     fun compareSelections(secret: List<Fruit>, guess: List<Fruit?>): ComparisonResult {
         // Initialiser le compte des positions correctes
@@ -89,6 +84,21 @@ object GameLogic {
     fun providePeelableHint(secretCombination: List<Fruit>): List<String> {
         return secretCombination.map { if (it.isPeelable) "Peelable" else "NotPeelable" }
     }
+    fun useSeedHint(gameState: GameState) {
+        if (!gameState.seedHintUsed) {
+            gameState.attemptsLeft -= 2
+            gameState.seedHint = provideSeedHint(gameState.secretCombination)
+            gameState.seedHintUsed = true
+        }
+    }
+
+    fun usePeelHint(gameState: GameState) {
+        if (!gameState.peelHintUsed) {
+            gameState.attemptsLeft -= 3
+            gameState.peelHint = providePeelableHint(gameState.secretCombination)
+            gameState.peelHintUsed = true
+        }
+    }
 
 
 
@@ -101,18 +111,17 @@ data class ComparisonResult(
 )
 
 
-data class GuessResult(
-    val guess: List<Fruit>,
-    val correctPositions: Int,
-    val misplacedPositions: Int
-)
-
 data class GameState(
     var secretCombination: List<Fruit> = listOf(),
-    var attemptsLeft: Int = 10, // Exemple: 10 essais au début
+    var attemptsLeft: Int = 10,
     var score: Int = 0,
-    var history: MutableList<ComparisonResult> = mutableListOf() // Supposons que vous avez ajouté ComparisonResult à votre historique
+    var history: MutableList<ComparisonResult> = mutableListOf(),
+    var seedHintUsed: Boolean = false,
+    var peelHintUsed: Boolean = false,
+    var seedHint: List<String> = emptyList(),
+    var peelHint: List<String> = emptyList()
 )
+
 
 enum class GameStateStatus {
     WON, LOST, PLAYING

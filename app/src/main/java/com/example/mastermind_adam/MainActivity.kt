@@ -29,8 +29,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
+
+
+var gameState by mutableStateOf(GameState())
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +58,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
-    val secretCombination = remember { mutableStateOf(GameLogic.generateRandomFruitCombination()) }
+
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var selectedFruits by remember { mutableStateOf<List<Fruit?>>(List(fruits.size) { null }) }
@@ -62,7 +69,6 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
     var alertDialog by remember { mutableStateOf(false) }
     var dialogMessage by remember { mutableStateOf("") }
     var gameStateStatus by remember { mutableStateOf(GameStateStatus.PLAYING) }
-
 
 
 
@@ -83,12 +89,17 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Option 1") },
-                            onClick = { showMenu = false }
+                            text = { Text("Hint 1: Seeds / no Seeds") },
+                            onClick = {
+                                GameLogic.useSeedHint(gameState)
+                                showMenu = false }
                         )
                         DropdownMenuItem(
-                            text = { Text("Option 2") },
-                            onClick = { showMenu = false }
+                            text = { Text("Hint 2: Peelable / no Peelable") },
+                            onClick = {
+                                GameLogic.usePeelHint(gameState)
+                                showMenu = false
+                            }
                         )
                     }
                 }
@@ -106,12 +117,12 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                 )
                 Button(
                     onClick = {
-                        // Exemple de comparaison (ajustez selon votre implémentation)
+
                         GameLogic.validateSelection(gameState, selectedFruits)
 
                         val lastResult = gameState.history.lastOrNull()
                         lastResult?.let {
-                            history += listOf(selectedFruits to it) // Ajoutez ici la logique d'affichage adaptée à votre structure
+                            history += listOf(selectedFruits to it)
 
                         }
                         // Réinitialiser la sélection actuelle ou effectuer d'autres actions nécessaires
@@ -142,6 +153,7 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
             // Display the game info just below the top bar
             GameInfoDisplay(gameState = gameState)
             DisplayHistory(history)
+            DisplayHints(gameState = gameState)
 
             // Now display the fruit combination or any other main content
             FruitCombinationDisplay(fruits)
@@ -153,9 +165,9 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                             this[selectedCellIndex!!] = fruit // Update the fruit for the selected cell
                         }
                         selectedFruits = updatedSelections // Update the state
-                        showDialog = false // Close the dialog
+                        showDialog = false
                     },
-                    onDismiss = { showDialog = false } // Close the dialog without making a selection
+                    onDismiss = { showDialog = false }
                 )
             }
 
@@ -175,7 +187,12 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                                 gameState.secretCombination = GameLogic.generateRandomFruitCombination()
                                 gameState.attemptsLeft = 10
                                 gameState.history.clear() // Effacer l'historique pour le nouveau set
-                                // Le score est conservé
+
+                                // Mise à jour de l'affichage pour montrer le nouveau set de fruits
+                                // et réinitialiser selectedFruits pour correspondre à la nouvelle taille de la combinaison
+                                selectedFruits = List(gameState.secretCombination.size) { null }
+
+                                // Le score est conservé, pas besoin de le réinitialiser
                             }
                             GameStateStatus.LOST -> {
                                 // Recommencer une nouvelle partie
@@ -183,8 +200,11 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                                 gameState.attemptsLeft = 10
                                 gameState.score = 0 // Réinitialisation du score
                                 gameState.history.clear() // Effacer l'historique pour la nouvelle partie
+
+                                // Mise à jour de l'affichage pour la nouvelle partie
+                                selectedFruits = List(gameState.secretCombination.size) { null }
                             }
-                            else -> {} // Pas d'action pour PLAYING
+                            else -> {gameState.history.clear()} // Pas d'action pour PLAYING
                         }
 
                         alertDialog = false
@@ -203,6 +223,7 @@ fun SmallTopAppBarExample(fruits: List<Fruit>, gameState: GameState) {
                 }
             )
         }
+
 
 
     }
@@ -228,10 +249,10 @@ fun GameInfoDisplay(gameState: GameState) {
 }
 
 @Composable
-fun DisplayHistory(history: List<Pair<List<Fruit?>, ComparisonResult>>) {
-    history.forEachIndexed { index, (selection, result) ->
+    fun DisplayHistory(history: List<Pair<List<Fruit?>, ComparisonResult>>) {
+    history.forEachIndexed { _, (selection, result) ->
         // Affichez ici la sélection et le résultat de la comparaison
-        Text("Attempt $index: Correct positions ${result.correctPositions}, Misplaced ${result.misplaced}")
+        Text("Correct positions ${result.correctPositions}, Misplaced ${result.misplaced}")
         Row {
             selection.forEach { fruit ->
                 fruit?.let {
@@ -371,21 +392,36 @@ fun SelectedFruitBackground(fruit: Fruit?) {
 
 
 
+@Composable
+fun DisplayHints(gameState: GameState) {
+    Column {
+        if (gameState.seedHintUsed) {
+            Text(
+                "Seed Hint: ${gameState.seedHint.joinToString(", ")}",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 22.sp
+                )
+            )
+        }
+        if (gameState.peelHintUsed) {
+            Text(
+                "Peel Hint: ${gameState.peelHint.joinToString(", ")}",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 22.sp
+                )
+            )
+        }
+    }
+}
+
+
 
 //Code a faire dans un autre fichier plus tard
 
-var gameState by mutableStateOf(GameState())
 
 
-enum class HintType {
-    SEED,
-    PEEL
-}
 
-fun useHint(type: HintType) {
-    when (type) {
-        HintType.SEED -> gameState.attemptsLeft -= 2
-        HintType.PEEL -> gameState.attemptsLeft -= 3
-    }
-    // Afficher l'indice correspondant
-}
